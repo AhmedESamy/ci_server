@@ -1,6 +1,24 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2758
-\cocoatextscaling0\cocoaplatform0{\fonttbl}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww34060\viewh20740\viewkind0
-}
+import pytest
+from ci_server import app
+
+@pytest.fixture
+def client():
+    """Creates a test client for the Flask app."""
+    app.testing = True
+    return app.test_client()
+
+def test_webhook_push_event(client):
+    """Placeholder: Tests handling of a push event webhook by making a real request."""
+    pass
+
+def test_webhook_pull_request_event(client):
+    """Placeholder: Tests handling of a pull request event webhook by making a real request."""
+    pass
+
+def test_handle_push_event():
+    """Placeholder: Tests direct call to handle_push_event function."""
+    pass
+
+def test_handle_pull_request_event():
+    """Placeholder: Tests direct call to handle_pull_request_event function."""
+    pass
