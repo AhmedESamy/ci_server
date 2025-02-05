@@ -39,7 +39,7 @@ This project is a minimal **Continuous Integration (CI) Server** that listens to
 ## Setup & Installation
 ### **1. Clone the Repository**
 ```sh
-git clone [<repository_url>](https://github.com/AhmedESamy/ci_server/)
+git clone https://github.com/AhmedESamy/ci_server/
 cd ci-server
 ```
 
