@@ -43,17 +43,21 @@ git clone https://github.com/AhmedESamy/ci_server/
 cd ci-server
 ```
 
-### **2. Build docker container
+### **2. Create a Virtual Environment** (Optional but Recommended)
 ```sh
-
+python3 -m venv venv
+source venv/bin/activate  # On Mac/Linux
+venv\Scripts\activate  # On Windows
 ```
 
-### **3. Set .env file configs
-Inside .env file configure the url of the repo you want to test as well as other environment variables
+### **3. Install Dependencies**
+```sh
+pip install -r requirements.txt
+```
 
 ## Running the CI Server
 ```sh
-docker compose up
+bash scripts/start_server.sh
 ```
 This will start the Flask server and listen for webhook events.
 
