@@ -10,7 +10,7 @@ COPY requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-Run mkdir src/testingdir
+RUN mkdir -p src/testingdir
 
 COPY . .
 
