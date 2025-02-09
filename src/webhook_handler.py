@@ -1,6 +1,8 @@
 import logging
 from flask import request, jsonify
 from notifier import send_notification
+import os
+import subprocess
 
 # Placeholder for webhook processing
 def process_webhook(payload):
@@ -35,10 +37,22 @@ def handle_pull_request_event(payload):
 def compile_project():
     """Placeholder: Compiles the project when a commit is pushed."""
     logging.info("Compiling project...")
+    successCode = os.system("pwd && cd src/testingdir && git clone https://github.com/AhmedESamy/Launch_Interceptor")
+    if successCode != 0:
+        logging.info("Could not compile project")
+    else:
+        logging.info("Compiled project succesfully")
     pass
 
 # Placeholder for running tests
 def run_tests():
     """Placeholder: Runs automated tests and returns the result."""
     logging.info("Running tests...")
-    return "success"  # Replace with actual test execution logic
+    result = subprocess.run(
+        'cd src/testingdir && cd $(ls -d */) && pytest src/tests/ && cd .. && rm -rf $(ls -d */)',
+        capture_output=True,
+        text=True,
+        shell=True
+    )
+    
+    return result.stdout
