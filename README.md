@@ -55,6 +55,14 @@ venv\Scripts\activate  # On Windows
 pip install -r requirements.txt
 ```
 
+### **4. Create and set .token file**
+The `.token` file will contain the access token needed to authorize updating the commit status on GitHub. 
+It should be located in the base folder.
+Instructions on creating a token file can be found [here](https://github.com/settings/tokens). 
+If you're using a fine-grained token, it needs to be given "write" access to "Commit statuses".
+
+NOTE: The token is secret to you. DO NOT PUSH IT. It has been added to the `.gitignore` for this reason.
+
 ## Running the CI Server
 ```sh
 bash scripts/start_server.sh
