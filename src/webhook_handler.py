@@ -1,15 +1,17 @@
 import logging
 import json
+import shutil
+from pathlib import Path
 from flask import request, jsonify
 from notifier import send_notification
 import os
 
-import subprocess
 from git import Repo 
 import pytest
 import pylint.reporters.text as lint_report
 import pylint.lint as lint
 import testinfo
+import notifier
 
 import io
 from contextlib import redirect_stdout, redirect_stderr
@@ -46,67 +48,47 @@ def clone_project_upon_push_and_test(payload):
     logging.info("Most recent commit: "+payload["after"])
 
     logging.info("Repository url: "+repo_url)
-    repo = Repo.clone_from(repo_url, "./src/testingdir", branch=branch_name, single_branch=True)
+    clone_dir = "./testingdir"
+    if Path(clone_dir).is_dir():
+        logging.info(f"Cloning directory {clone_dir} already exists, deleting...")
+        shutil.rmtree(clone_dir)
+        
+    repo = Repo.clone_from(repo_url, clone_dir, branch=branch_name, single_branch=True)
     return repo
   
-def handle_push_event(payload):
+def handle_push_event(payload, token):
     """Handles push events from GitHub webhook by triggering compilation, testing, and notification."""
 
-    #compile_project()
-    therepo = clone_project_upon_push_and_test(payload)
-    test_results = tests_and_compiles_on_push(payload, therepo)
+    # Test the project and gather results
+    repo = clone_project_upon_push_and_test(payload)
+    test_results = tests_and_compiles_on_push(payload, repo)
     
-    try:
-        repo_name = payload['repository']['full_name']
-        commit_sha = payload['after']
+    for test_info in test_results:
+        try:
+            notifier.send_commit_status(repo=payload['repository']['full_name'],
+                           commit_sha=test_info.commit_id,
+                           test_data=test_info,
+                           token=token)
+        except Exception as e:
+            logging.error(f"Error processing push event: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+    
         
-        # Get username and email of person who pushed
-        username = payload.get('pusher', {}).get('name')
-        recipient_email = get_user_email(username)
-        
-        # Send initial pending notification
-        send_notification(
-            status="pending",
-            repo=repo_name,
-            commit_sha=commit_sha,
-            token=os.environ.get('GITHUB_TOKEN')
-        )
-        
-        # Run tests and get results
-        success, test_message = run_tests()
-        
-        # Send final notification
-        send_notification(
-            status="success" if success else "failure",
-            repo=repo_name,
-            commit_sha=commit_sha,
-            token=os.environ.get('GITHUB_TOKEN'),
-            email_config={
-                "recipient": recipient_email,
-                "smtp_server": os.environ.get('SMTP_SERVER'),
-                "smtp_port": int(os.environ.get('SMTP_PORT')),
-                "sender_email": os.environ.get('SENDER_EMAIL'),
-                "sender_password": os.environ.get('EMAIL_PASSWORD')
-            },
-            message=test_message
-        )
-        
-        return jsonify({
-            "message": "Push event processed.",
-            "test_success": success,
-            "test_message": test_message
-        }), 200
-        
-    except Exception as e:
-        logging.error(f"Error processing push event: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "message": "Push event processed."
+    }), 200
 
 def clone_project_upon_pull(payload):
     branch_name = payload["pull_request"]["head"]["ref"]
     logging.info(branch_name)
     repo_url = payload["pull_request"]["head"]["repo"]["html_url"]
     logging.info(repo_url)
-    repo = Repo.clone_from(repo_url, "./src/testingdir", branch=branch_name, single_branch=True)
+    clone_dir = "./testingdir"
+    if Path(clone_dir).is_dir():
+        logging.info(f"Cloning directory {clone_dir} already exists, deleting...")
+        shutil.rmtree(clone_dir)
+        
+    repo = Repo.clone_from(repo_url, clone_dir, branch=branch_name, single_branch=True)
     return repo
   
 def handle_pull_request_event(payload):
@@ -182,16 +164,17 @@ def check_syntax(dir):
 
     return pylint_pass,pylint_res
 
-def run_tests(dir): 
+def run_tests(test_dir): 
     """
     Runs test suite located in the given directory. Returns boolean 
     pass status and string of pytest report.
     """
     stdout_capture = io.StringIO()
     stderr_capture = io.StringIO()
+    test_dir = os.path.abspath(test_dir)  # Convert to absolute path
+    logging.info(f"Testing tests in dir {test_dir}")
     with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-        retcode = pytest.main([dir])
-
+        retcode = pytest.main([test_dir])
     pytest_output = stdout_capture.getvalue()
     stderr_output = stderr_capture.getvalue()
 
@@ -218,10 +201,10 @@ def tests_and_compiles_on_push(payload, repo):
         repo.git.checkout(commit_id)
 
         logging.info(f"\nCompiling Commit: {commit_id}")
-        pylint_pass,pylint_output = check_syntax("src/testingdir/src/tests")
+        pylint_pass,pylint_output = check_syntax("./testingdir/tests")
 
         logging.info(f"\nTesting Commit: {commit_id}")
-        pytest_pass,pytest_output = run_tests("src/testingdir/src/tests")        
+        pytest_pass,pytest_output = run_tests("./testingdir/tests")        
         
         test_results.append(testinfo.testInfo(
                                             commit_id=commit_id,
@@ -232,6 +215,6 @@ def tests_and_compiles_on_push(payload, repo):
                                             )
                             )
 
-    os.system("rm -rf src/testingdir")
+    shutil.rmtree("./testingdir")
         
     return test_results

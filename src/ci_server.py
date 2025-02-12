@@ -1,7 +1,7 @@
 import logging
 from flask import Flask, request, jsonify
 from pathlib import Path
-import system_routines, notifier
+import webhook_handler as handler
 
 # Initialize Flask app for webhook handling
 app = Flask(__name__)
@@ -12,18 +12,13 @@ def handle_webhook():
     """Handles incoming webhook events from GitHub and triggers necessary actions."""
     data = request.get_json()
     
-    
     """Run tests"""
     # system_routines.clone_and_run(data)
     # Notify users
-    token_path = Path(__file__).parent / "../.token"
-    notifier.send_notification("success", 
-                               data['repository']['full_name'],
-                                # This only checks latest commit in a push
-                               data['head_commit']['id'],
-                               open(token_path, "r").read(),
-                               None) 
-    
+    event_type = request.headers.get("X-GitHub-Event", "Unknown")
+    if event_type == "push":
+        token_path = Path(__file__).parent / "../.token"
+        handler.handle_push_event(data, open(token_path, "r").read())
     
     return jsonify({"message": "Received update, running tests"}), 200
 
