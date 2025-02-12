@@ -6,22 +6,18 @@ from email.mime.multipart import MIMEMultipart
 
 def send_commit_status(repo, commit_sha, test_data, token):
     """Sends a commit status update to GitHub."""
-    url = f"https://api.github.com/repos/{repo}/check-runs"
+    url = f"https://api.github.com/repos/{repo}/statuses/{commit_sha}"
     
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3+json"
     }
+    
 
     data = {
-        "name": "Test suite",
-        "head_sha": commit_sha,
-        "state": "Success." if test_data.passed_pylint and test_data.passed_test else "Fail.",
-        "output": {
-            "title": "Test suite results",
-            "text": f"Pylinter results: {test_data.pylint_output}\n" + 
-                    f"Pytest results: {test_data.pytest_output}"
-        },
+        "state": "success" if test_data.passed_pylint and test_data.passed_test else "failure",
+        "description": "Pylint: " + ("Pass" if test_data.passed_pylint else "Fail") 
+                    + ", Pytest: " + ("Pass" if test_data.passed_test else "Fail"),
         "context": "continuous-integration/custom-ci",
         "target_url": f"https://github.com/{repo}/actions"
     }

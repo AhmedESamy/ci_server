@@ -64,11 +64,10 @@ def handle_push_event(payload, token):
     test_results = tests_and_compiles_on_push(payload, repo)
     
     for test_info in test_results:
-        # Send initial pending notification
         try:
             notifier.send_commit_status(repo=payload['repository']['full_name'],
                            commit_sha=test_info.commit_id,
-                           status=test_info.passed_test,
+                           test_data=test_info,
                            token=token)
         except Exception as e:
             logging.error(f"Error processing push event: {str(e)}")
