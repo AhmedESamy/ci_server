@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import mock_open
 import src.webhook_handler as handler
+import src.testinfo as testinfo
 from src.ci_server import app
 
 @pytest.fixture
@@ -19,13 +20,8 @@ def mock_token():
 def test_handle_webhook_push_event(mock_client, mock_payload, mock_token, mocker):
     # Test that a push event correctly triggers `handle_push_event`    
     
-    # Simulate reading from the .token file
     mocker.patch("builtins.open", mock_open(read_data="token"))
-    
-    # Prevent handle_push_event from executing
     mock_handle_push_event = mocker.patch("webhook_handler.handle_push_event")
-
-    # Send a simulated POST
     response = mock_client.post("/webhook", 
                            json={"something": "something"}, 
                            headers={"X-GitHub-Event": "push"})
@@ -40,13 +36,8 @@ def test_handle_webhook_push_event(mock_client, mock_payload, mock_token, mocker
 def test_process_webhook_incorrect(mock_client, mock_payload, mock_token, mocker):
     # Test that an invalid event does not trigger `handle_push_event`    
     
-    # Simulate reading from the .token file
     mocker.patch("builtins.open", mock_open(read_data="token"))
-    
-    # Prevent handle_push_event from executing
     mock_handle_push_event = mocker.patch("webhook_handler.handle_push_event")
-
-    # Send a simulated POST request
     response = mock_client.post("/webhook", 
                            json={"something": "something"}, 
                            headers={"X-GitHub-Event": "potato"}) # Invalid event
@@ -57,6 +48,32 @@ def test_process_webhook_incorrect(mock_client, mock_payload, mock_token, mocker
 
     # Verify that handle_push_event was not called
     mock_handle_push_event.assert_not_called()
+
+def test_clone_project_upon_push_and_test_dir_exists(mocker):
+    # Test that we remove `./testingdir` if it exists before cloning
+    mock_rmtree = mocker.patch("shutil.rmtree")
+    mocker.patch("pathlib.Path.is_dir", return_value=True)
+    mocker.patch("src.webhook_handler.Repo.clone_from")
+    payload = {"ref": "something",
+               "before" : "something",
+               "after" : "something",
+               "repository" : {"html_url" : "something"},
+               }
+    handler.clone_project_upon_push_and_test(payload)
+    mock_rmtree.assert_called_once_with("./testingdir")
+    
+def test_clone_project_upon_push_and_test_dir_not_exists(mocker):
+    # Test that `rmtree` is not called if `./testingdir` does not exist
+    mock_rmtree = mocker.patch("shutil.rmtree")
+    mocker.patch("pathlib.Path.is_dir", return_value=False)
+    mocker.patch("src.webhook_handler.Repo.clone_from")
+    payload = {"ref": "something",
+               "before" : "something",
+               "after" : "something",
+               "repository" : {"html_url" : "something"},
+               }
+    handler.clone_project_upon_push_and_test(payload)
+    mock_rmtree.assert_not_called()
     
 
 def test_webhook_push_event():
