@@ -7,6 +7,10 @@ import os
 import subprocess
 from git import Repo 
 import pytest
+import pylint.reporters.text as lint_report
+import pylint.lint as lint
+import testinfo
+
 import io
 from contextlib import redirect_stdout, redirect_stderr
 
@@ -50,7 +54,7 @@ def handle_push_event(payload):
 
     #compile_project()
     therepo = clone_project_upon_push_and_test(payload)
-    test_results = run_tests_on_push(payload, therepo)
+    test_results = tests_and_compiles_on_push(payload, therepo)
     
     try:
         repo_name = payload['repository']['full_name']
@@ -156,38 +160,78 @@ def handle_pull_request_event(payload):
         return jsonify({"error": str(e)}), 500
 
 
-def compile_project():
-    """Placeholder: Compiles the project when a commit is pushed."""
-    logging.info("Compiling project...")
-    successCode = os.system("pwd && cd src/testingdir && git clone https://github.com/AhmedESamy/Launch_Interceptor")
-    if successCode != 0:
-        logging.info("Could not compile project")
+def check_syntax(dir):
+    """Runs pylint syntax test for module in the given directory. Returns 
+    boolean pass status and string of pylint result."""
+
+    pylint_output = io.StringIO()
+    reporter = lint_report.TextReporter(pylint_output)
+    lint.Run(["--disable=R,C,W", "-sn" , dir], reporter=reporter, exit=False)
+    pylint_res = pylint_output.getvalue()
+    
+    lint.pylinter.MANAGER.clear_cache() # Clear cache
+
+    # Formatting
+    pylint_res = '\n'.join(pylint_res.split('\n')[1::2])
+
+    if len(pylint_res) == 0:
+        pylint_pass = True
+        pylint_res = "Pylint syntax test passed succesfully."
     else:
-        logging.info("Compiled project succesfully")
-    pass
+        pylint_pass = False 
+
+    return pylint_pass,pylint_res
+
+def run_tests(dir): 
+    """
+    Runs test suite located in the given directory. Returns boolean 
+    pass status and string of pytest report.
+    """
+    stdout_capture = io.StringIO()
+    stderr_capture = io.StringIO()
+    with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+        retcode = pytest.main([dir])
+
+    pytest_output = stdout_capture.getvalue()
+    stderr_output = stderr_capture.getvalue()
+
+    if retcode == 0:
+        pytest_pass = True
+    else:
+        pytest_pass = False
+
+    return pytest_pass,"Standard output: "+ pytest_output + "\n" + "Standard error: " + stderr_output
 
 
 # Placeholder for running tests
-def run_tests_on_push(payload, repo):
-    """Placeholder: Runs automated tests and returns the result."""
+def tests_and_compiles_on_push(payload, repo):
+    """Creates branch for each commit included in payload, runs compilation and testing for each. Returns
+    array of testInfo objects containing the id and test results for each commit."""
     logging.info("Running tests... ")
     
     commits_list = [commit["id"] for commit in payload["commits"]]
     
-    results = {}
+    test_results = []
 
     for commit_id in commits_list:
-        logging.info(f"\nTesting Commit: {commit_id}")
 
         repo.git.checkout(commit_id)
-        stdout_output = io.StringIO()
-        stderr_output = io.StringIO()
+
+        logging.info(f"\nCompiling Commit: {commit_id}")
+        pylint_pass,pylint_output = check_syntax("src/testingdir/src/tests")
+
+        logging.info(f"\nTesting Commit: {commit_id}")
+        pytest_pass,pytest_output = run_tests("src/testingdir/src/tests")        
         
-        with redirect_stdout(stdout_output), redirect_stderr(stderr_output):
-            pytest.main(["src/testingdir/src/tests"])
-        
-        results[commit_id] = "Standard output: "+stdout_output.getvalue()+"Standard error: "+stderr_output.getvalue()
-        
+        test_results.append(testinfo.testInfo(
+                                            commit_id=commit_id,
+                                            passed_pylint=pylint_pass,
+                                            passed_test=pytest_pass,
+                                            pylint_output=pylint_output,
+                                            pytest_output=pytest_output
+                                            )
+                            )
+
     os.system("rm -rf src/testingdir")
         
-    return results
+    return test_results
