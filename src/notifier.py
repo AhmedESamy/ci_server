@@ -4,28 +4,24 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-def send_commit_status(repo, commit_sha, status, token):
+def send_commit_status(repo, commit_sha, test_data, token):
     """Sends a commit status update to GitHub."""
-    url = f"https://api.github.com/repos/{repo}/statuses/{commit_sha}"
+    url = f"https://api.github.com/repos/{repo}/check-runs"
     
-    if status == "success":
-        state = "success"
-        description = "CI build succeeded!"
-    elif status == "failure":
-        state = "failure"
-        description = "CI build failed."
-    else:
-        state = "pending"
-        description = "CI build in progress..."
-
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3+json"
     }
 
     data = {
-        "state": state,
-        "description": description,
+        "name": "Test suite",
+        "head_sha": commit_sha,
+        "state": "Success." if test_data.passed_pylint and test_data.passed_test else "Fail.",
+        "output": {
+            "title": "Test suite results",
+            "text": f"Pylinter results: {test_data.pylint_output}\n" + 
+                    f"Pytest results: {test_data.pytest_output}"
+        },
         "context": "continuous-integration/custom-ci",
         "target_url": f"https://github.com/{repo}/actions"
     }
