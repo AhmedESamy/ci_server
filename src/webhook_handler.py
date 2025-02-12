@@ -1,30 +1,14 @@
-import logging
-import json
-import shutil
+import logging, json, shutil, os, io
 from pathlib import Path
 from flask import request, jsonify
-from notifier import send_notification
-import os
 
 from git import Repo 
 import pytest
 import pylint.reporters.text as lint_report
 import pylint.lint as lint
-import testinfo
-import notifier
-
-import io
 from contextlib import redirect_stdout, redirect_stderr
 
-def get_user_email(username):
-    """Get user's email from environment variable mapping."""
-    try:
-        # Load email mappings from environment variable
-        email_mappings = json.loads(os.environ.get('USER_EMAIL_MAPPING', '{}'))
-        return email_mappings.get(username, os.environ.get('DEFAULT_RECIPIENT'))
-    except json.JSONDecodeError:
-        logging.error("Failed to parse USER_EMAIL_MAPPING environment variable")
-        return os.environ.get('DEFAULT_RECIPIENT')
+import testinfo, notifier
 
 def process_webhook(payload):
     """Processes the webhook event received from GitHub and triggers necessary actions."""
@@ -97,44 +81,11 @@ def handle_pull_request_event(payload):
     theRepo = clone_project_upon_pull(payload)
 
     try:
-        repo_name = payload['repository']['full_name']
-        commit_sha = payload['pull_request']['head']['sha']
-        
-        # Get username and email of person who created the PR
-        username = payload.get('pull_request', {}).get('user', {}).get('login')
-        recipient_email = get_user_email(username)
-        
-        # Send initial pending notification
-        send_notification(
-            status="pending",
-            repo=repo_name,
-            commit_sha=commit_sha,
-            token=os.environ.get('GITHUB_TOKEN')
-        )
-        
-        # Run tests and get results
-        success, test_message = run_tests()
-        
-        # Send final notification
-        send_notification(
-            status="success" if success else "failure",
-            repo=repo_name,
-            commit_sha=commit_sha,
-            token=os.environ.get('GITHUB_TOKEN'),
-            email_config={
-                "recipient": recipient_email,
-                "smtp_server": os.environ.get('SMTP_SERVER'),
-                "smtp_port": int(os.environ.get('SMTP_PORT', 587)),
-                "sender_email": os.environ.get('SENDER_EMAIL'),
-                "sender_password": os.environ.get('EMAIL_PASSWORD')
-            },
-            message=test_message
-        )
         
         return jsonify({
             "message": "Pull request event processed.",
-            "test_success": success,
-            "test_message": test_message
+            "test_success": "fail",
+            "test_message": "not implemented"
         }), 200
         
     except Exception as e:
