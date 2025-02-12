@@ -70,14 +70,26 @@ def compile_project():
     pass
 
 # Placeholder for running tests
-def run_tests():
+def run_tests_on_push(payload, repo):
     """Placeholder: Runs automated tests and returns the result."""
-    logging.info("Running tests...")
-    result = subprocess.run(
-        'cd src/testingdir && cd $(ls -d */) && pytest src/tests/ && cd .. && rm -rf $(ls -d */)',
-        capture_output=True,
-        text=True,
-        shell=True
-    )
+    logging.info("Running tests... ")
     
-    return result.stdout
+    commits_list = [commit["id"] for commit in payload["commits"]]
+    
+    results = {}
+
+    for commit_id in commits_list:
+        logging.info(f"\nTesting Commit: {commit_id}")
+
+        repo.git.checkout(commit_id)
+        stdout_output = io.StringIO()
+        stderr_output = io.StringIO()
+        
+        with redirect_stdout(stdout_output), redirect_stderr(stderr_output):
+            pytest.main(["src/testingdir/src/tests"])
+        
+        results[commit_id] = "Standard output: "+stdout_output.getvalue()+"Standard error: "+stderr_output.getvalue()
+        
+    os.system("rm -rf src/testingdir")
+        
+    return results
