@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import mock_open
 import src.webhook_handler as handler
-import src.testinfo as testinfo
 from src.ci_server import app
 
 @pytest.fixture
@@ -76,18 +75,3 @@ def test_clone_project_upon_push_and_test_dir_not_exists(mocker):
     mock_rmtree.assert_not_called()
     
 
-def test_webhook_push_event():
-    """Placeholder: Tests handling of a push event webhook by making a real request."""
-    pass
-
-def test_webhook_pull_request_event():
-    """Placeholder: Tests handling of a pull request event webhook by making a real request."""
-    pass
-
-def test_handle_push_event():
-    """Placeholder: Tests direct call to handle_push_event function."""
-    pass
-
-def test_handle_pull_request_event():
-    """Placeholder: Tests direct call to handle_pull_request_event function."""
-    pass
