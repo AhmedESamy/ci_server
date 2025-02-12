@@ -48,7 +48,7 @@ def clone_project_upon_push_and_test(payload):
     logging.info("Most recent commit: "+payload["after"])
 
     logging.info("Repository url: "+repo_url)
-    clone_dir = "./src/testingdir"
+    clone_dir = "./testingdir"
     if Path(clone_dir).is_dir():
         logging.info(f"Cloning directory {clone_dir} already exists, deleting...")
         shutil.rmtree(clone_dir)
@@ -65,7 +65,6 @@ def handle_push_event(payload, token):
     
     for test_info in test_results:
         # Send initial pending notification
-        logging.error(f"TEST CASE RESULT: {str(test_info.passed_test)}")
         try:
             notifier.send_commit_status(repo=payload['repository']['full_name'],
                            commit_sha=test_info.commit_id,
@@ -85,7 +84,7 @@ def clone_project_upon_pull(payload):
     logging.info(branch_name)
     repo_url = payload["pull_request"]["head"]["repo"]["html_url"]
     logging.info(repo_url)
-    clone_dir = "./src/testingdir"
+    clone_dir = "./testingdir"
     if Path(clone_dir).is_dir():
         logging.info(f"Cloning directory {clone_dir} already exists, deleting...")
         shutil.rmtree(clone_dir)
@@ -166,16 +165,17 @@ def check_syntax(dir):
 
     return pylint_pass,pylint_res
 
-def run_tests(dir): 
+def run_tests(test_dir): 
     """
     Runs test suite located in the given directory. Returns boolean 
     pass status and string of pytest report.
     """
     stdout_capture = io.StringIO()
     stderr_capture = io.StringIO()
+    test_dir = os.path.abspath(test_dir)  # Convert to absolute path
+    logging.info(f"Testing tests in dir {test_dir}")
     with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-        retcode = pytest.main([dir])
-
+        retcode = pytest.main([test_dir])
     pytest_output = stdout_capture.getvalue()
     stderr_output = stderr_capture.getvalue()
 
@@ -202,10 +202,10 @@ def tests_and_compiles_on_push(payload, repo):
         repo.git.checkout(commit_id)
 
         logging.info(f"\nCompiling Commit: {commit_id}")
-        pylint_pass,pylint_output = check_syntax("src/testingdir/src/tests")
+        pylint_pass,pylint_output = check_syntax("./testingdir/tests")
 
         logging.info(f"\nTesting Commit: {commit_id}")
-        pytest_pass,pytest_output = run_tests("src/testingdir/src/tests")        
+        pytest_pass,pytest_output = run_tests("./testingdir/tests")        
         
         test_results.append(testinfo.testInfo(
                                             commit_id=commit_id,
@@ -216,6 +216,6 @@ def tests_and_compiles_on_push(payload, repo):
                                             )
                             )
 
-    shutil.rm_tree("/src/testingdir")
+    shutil.rmtree("./testingdir")
         
     return test_results
