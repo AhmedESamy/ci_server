@@ -4,12 +4,12 @@ from flask import request, jsonify
 from notifier import send_notification
 import os
 
-import subprocess
 from git import Repo 
 import pytest
 import pylint.reporters.text as lint_report
 import pylint.lint as lint
 import testinfo
+import notifier
 
 import io
 from contextlib import redirect_stdout, redirect_stderr
@@ -49,57 +49,28 @@ def clone_project_upon_push_and_test(payload):
     repo = Repo.clone_from(repo_url, "./src/testingdir", branch=branch_name, single_branch=True)
     return repo
   
-def handle_push_event(payload):
+def handle_push_event(payload, token):
     """Handles push events from GitHub webhook by triggering compilation, testing, and notification."""
 
-    #compile_project()
-    therepo = clone_project_upon_push_and_test(payload)
-    test_results = tests_and_compiles_on_push(payload, therepo)
+    # Test the project and gather results
+    repo = clone_project_upon_push_and_test(payload)
+    test_results = tests_and_compiles_on_push(payload, repo)
     
-    try:
-        repo_name = payload['repository']['full_name']
-        commit_sha = payload['after']
-        
-        # Get username and email of person who pushed
-        username = payload.get('pusher', {}).get('name')
-        recipient_email = get_user_email(username)
-        
+    for test_info in test_results:
         # Send initial pending notification
-        send_notification(
-            status="pending",
-            repo=repo_name,
-            commit_sha=commit_sha,
-            token=os.environ.get('GITHUB_TOKEN')
-        )
+        try:
+            notifier.send_commit_status(repo=payload['repository']['full_name'],
+                           commit_sha=test_info.commit_id,
+                           status=test_info.passed_test,
+                           token=token)
+        except Exception as e:
+            logging.error(f"Error processing push event: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+    
         
-        # Run tests and get results
-        success, test_message = run_tests()
-        
-        # Send final notification
-        send_notification(
-            status="success" if success else "failure",
-            repo=repo_name,
-            commit_sha=commit_sha,
-            token=os.environ.get('GITHUB_TOKEN'),
-            email_config={
-                "recipient": recipient_email,
-                "smtp_server": os.environ.get('SMTP_SERVER'),
-                "smtp_port": int(os.environ.get('SMTP_PORT')),
-                "sender_email": os.environ.get('SENDER_EMAIL'),
-                "sender_password": os.environ.get('EMAIL_PASSWORD')
-            },
-            message=test_message
-        )
-        
-        return jsonify({
-            "message": "Push event processed.",
-            "test_success": success,
-            "test_message": test_message
-        }), 200
-        
-    except Exception as e:
-        logging.error(f"Error processing push event: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "message": "Push event processed."
+    }), 200
 
 def clone_project_upon_pull(payload):
     branch_name = payload["pull_request"]["head"]["ref"]
