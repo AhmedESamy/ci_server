@@ -7,6 +7,9 @@ import os
 import subprocess
 from git import Repo 
 import pytest
+import pylint.reporters.text as lint_report
+import pylint.lint as lint
+
 import io
 from contextlib import redirect_stdout, redirect_stderr
 
@@ -156,15 +159,27 @@ def handle_pull_request_event(payload):
         return jsonify({"error": str(e)}), 500
 
 
-def compile_project():
-    """Placeholder: Compiles the project when a commit is pushed."""
-    logging.info("Compiling project...")
-    successCode = os.system("pwd && cd src/testingdir && git clone https://github.com/AhmedESamy/Launch_Interceptor")
-    if successCode != 0:
-        logging.info("Could not compile project")
+def check_syntax(dir):
+    """Runs pylint syntax test for module in the given directory. Returns 
+    boolean pass status and string of pylint result."""
+
+    pylint_output = io.StringIO()
+    reporter = lint_report.TextReporter(pylint_output)
+    lint.Run(["--disable=R,C,W", "-sn" , dir], reporter=reporter, exit=False)
+    pylint_res = pylint_output.getvalue()
+    
+    lint.pylinter.MANAGER.clear_cache() # Clear cache
+
+    # Formatting
+    pylint_res = '\n'.join(pylint_res.split('\n')[1::2])
+
+    if len(pylint_res) == 0:
+        pylint_pass = True
+        pylint_res = "Pylint syntax test passed succesfully."
     else:
-        logging.info("Compiled project succesfully")
-    pass
+        pylint_pass = False 
+
+    return pylint_pass,pylint_res
 
 
 # Placeholder for running tests
