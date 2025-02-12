@@ -4,6 +4,12 @@ from flask import request, jsonify
 from notifier import send_notification
 import os
 
+import subprocess
+from git import Repo 
+import pytest
+import io
+from contextlib import redirect_stdout, redirect_stderr
+
 def get_user_email(username):
     """Get user's email from environment variable mapping."""
     try:
@@ -26,9 +32,26 @@ def process_webhook(payload):
     else:
         logging.warning(f"Unhandled event type: {event_type}")
         return jsonify({"message": "Event not handled."}), 400
+      
+def clone_project_upon_push_and_test(payload):
+    branch_name = '/'.join((payload["ref"]).split('/')[2:])
+    logging.info(branch_name)
+    repo_url = payload["repository"]["html_url"]
+    
+    logging.info("Before commit: "+payload["before"])
+    logging.info("Most recent commit: "+payload["after"])
 
+    logging.info("Repository url: "+repo_url)
+    repo = Repo.clone_from(repo_url, "./src/testingdir", branch=branch_name, single_branch=True)
+    return repo
+  
 def handle_push_event(payload):
     """Handles push events from GitHub webhook by triggering compilation, testing, and notification."""
+
+    #compile_project()
+    therepo = clone_project_upon_push_and_test(payload)
+    test_results = run_tests_on_push(payload, therepo)
+    
     try:
         repo_name = payload['repository']['full_name']
         commit_sha = payload['after']
@@ -74,8 +97,19 @@ def handle_push_event(payload):
         logging.error(f"Error processing push event: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+def clone_project_upon_pull(payload):
+    branch_name = payload["pull_request"]["head"]["ref"]
+    logging.info(branch_name)
+    repo_url = payload["pull_request"]["head"]["repo"]["html_url"]
+    logging.info(repo_url)
+    repo = Repo.clone_from(repo_url, "./src/testingdir", branch=branch_name, single_branch=True)
+    return repo
+  
 def handle_pull_request_event(payload):
     """Handles pull request events from GitHub webhook by running tests and notifying results."""
+
+    theRepo = clone_project_upon_pull(payload)
+
     try:
         repo_name = payload['repository']['full_name']
         commit_sha = payload['pull_request']['head']['sha']
@@ -121,12 +155,39 @@ def handle_pull_request_event(payload):
         logging.error(f"Error processing pull request event: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+
 def compile_project():
     """Placeholder: Compiles the project when a commit is pushed."""
     logging.info("Compiling project...")
+    successCode = os.system("pwd && cd src/testingdir && git clone https://github.com/AhmedESamy/Launch_Interceptor")
+    if successCode != 0:
+        logging.info("Could not compile project")
+    else:
+        logging.info("Compiled project succesfully")
     pass
 
-def run_tests():
+
+# Placeholder for running tests
+def run_tests_on_push(payload, repo):
     """Placeholder: Runs automated tests and returns the result."""
-    logging.info("Running tests...")
-    return True, "Tests completed successfully"  # Replace with actual test execution logic
+    logging.info("Running tests... ")
+    
+    commits_list = [commit["id"] for commit in payload["commits"]]
+    
+    results = {}
+
+    for commit_id in commits_list:
+        logging.info(f"\nTesting Commit: {commit_id}")
+
+        repo.git.checkout(commit_id)
+        stdout_output = io.StringIO()
+        stderr_output = io.StringIO()
+        
+        with redirect_stdout(stdout_output), redirect_stderr(stderr_output):
+            pytest.main(["src/testingdir/src/tests"])
+        
+        results[commit_id] = "Standard output: "+stdout_output.getvalue()+"Standard error: "+stderr_output.getvalue()
+        
+    os.system("rm -rf src/testingdir")
+        
+    return results
