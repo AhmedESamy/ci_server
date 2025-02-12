@@ -53,7 +53,7 @@ def clone_project_upon_push_and_test(payload):
         logging.info(f"Cloning directory {clone_dir} already exists, deleting...")
         shutil.rmtree(clone_dir)
         
-    repo = Repo.clone_from(repo_url, clone_dir, branch=branch_name, single_branch=True)
+    repo = Repo.clone_from(repo_url, clone_dir, branch=branch_name)
     return repo
   
 def handle_push_event(payload, token):
@@ -197,15 +197,19 @@ def tests_and_compiles_on_push(payload, repo):
     test_results = []
 
     for commit_id in commits_list:
+        if not (len(commits_list) == 1):
+            repo.git.checkout(commit_id)
 
         repo.git.checkout(commit_id)
 
         logging.info(f"\nCompiling Commit: {commit_id}")
         pylint_pass,pylint_output = check_syntax("./testingdir/tests")
+        logging.info("linter pass: "+str(pylint_pass))
 
         logging.info(f"\nTesting Commit: {commit_id}")
         pytest_pass,pytest_output = run_tests("./testingdir/tests")        
-        
+        logging.info("pytest pass: "+str(pytest_pass))
+         
         test_results.append(testinfo.testInfo(
                                             commit_id=commit_id,
                                             passed_pylint=pylint_pass,
