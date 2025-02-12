@@ -9,6 +9,7 @@ from git import Repo
 import pytest
 import pylint.reporters.text as lint_report
 import pylint.lint as lint
+import testinfo
 
 import io
 from contextlib import redirect_stdout, redirect_stderr
@@ -209,18 +210,27 @@ def run_tests_on_push(payload, repo):
     
     commits_list = [commit["id"] for commit in payload["commits"]]
     
-    results = {}
+    test_results = []
 
     for commit_id in commits_list:
-        logging.info(f"\nTesting Commit: {commit_id}")
 
         repo.git.checkout(commit_id)
+
+        logging.info(f"\nCompiling Commit: {commit_id}")
+        pylint_pass,pylint_output = check_syntax("src/testingdir/src/tests")
 
         logging.info(f"\nTesting Commit: {commit_id}")
         pytest_pass,pytest_output = run_tests("src/testingdir/src/tests")        
         
-        results[commit_id] = pytest_output
+        test_results.append(testinfo.testInfo(
+                                            commit_id=commit_id,
+                                            passed_pylint=pylint_pass,
+                                            passed_test=pytest_pass,
+                                            pylint_output=pylint_output,
+                                            pytest_output=pytest_output
+                                            )
+                            )
 
     os.system("rm -rf src/testingdir")
         
-    return results
+    return test_results
