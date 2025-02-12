@@ -205,7 +205,8 @@ def run_tests(dir):
 
 # Placeholder for running tests
 def run_tests_on_push(payload, repo):
-    """Placeholder: Runs automated tests and returns the result."""
+    """Creates branch for each commit included in payload, runs compilation and testing for each. Returns
+    array of testInfo objects containing the id and test results for each commit."""
     logging.info("Running tests... ")
     
     commits_list = [commit["id"] for commit in payload["commits"]]
