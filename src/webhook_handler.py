@@ -10,19 +10,6 @@ from contextlib import redirect_stdout, redirect_stderr
 
 import testinfo, notifier
 
-def process_webhook(payload):
-    """Processes the webhook event received from GitHub and triggers necessary actions."""
-    event_type = request.headers.get("X-GitHub-Event", "Unknown")
-    logging.info(f"Received webhook event: {event_type}")
-    
-    if event_type == "push":
-        return handle_push_event(payload)
-    elif event_type == "pull_request":
-        return handle_pull_request_event(payload)
-    else:
-        logging.warning(f"Unhandled event type: {event_type}")
-        return jsonify({"message": "Event not handled."}), 400
-      
 def clone_project_upon_push_and_test(payload):
     branch_name = '/'.join((payload["ref"]).split('/')[2:])
     logging.info(branch_name)
@@ -154,7 +141,7 @@ def tests_and_compiles_on_push(payload, repo):
         repo.git.checkout(commit_id)
 
         logging.info(f"\nCompiling Commit: {commit_id}")
-        pylint_pass,pylint_output = check_syntax("./testingdir/tests")
+        pylint_pass,pylint_output = check_syntax("./testingdir/src")
         logging.info("linter pass: "+str(pylint_pass))
 
         logging.info(f"\nTesting Commit: {commit_id}")
