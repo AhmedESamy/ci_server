@@ -1,5 +1,7 @@
 import logging
 import json
+import shutil
+from pathlib import Path
 from flask import request, jsonify
 from notifier import send_notification
 import os
@@ -46,7 +48,12 @@ def clone_project_upon_push_and_test(payload):
     logging.info("Most recent commit: "+payload["after"])
 
     logging.info("Repository url: "+repo_url)
-    repo = Repo.clone_from(repo_url, "./src/testingdir", branch=branch_name, single_branch=True)
+    clone_dir = "./src/testingdir"
+    if Path(clone_dir).is_dir():
+        logging.info(f"Cloning directory {clone_dir} already exists, deleting...")
+        shutil.rmtree(clone_dir)
+        
+    repo = Repo.clone_from(repo_url, clone_dir, branch=branch_name, single_branch=True)
     return repo
   
 def handle_push_event(payload, token):
@@ -58,6 +65,7 @@ def handle_push_event(payload, token):
     
     for test_info in test_results:
         # Send initial pending notification
+        logging.error(f"TEST CASE RESULT: {str(test_info.passed_test)}")
         try:
             notifier.send_commit_status(repo=payload['repository']['full_name'],
                            commit_sha=test_info.commit_id,
@@ -77,7 +85,12 @@ def clone_project_upon_pull(payload):
     logging.info(branch_name)
     repo_url = payload["pull_request"]["head"]["repo"]["html_url"]
     logging.info(repo_url)
-    repo = Repo.clone_from(repo_url, "./src/testingdir", branch=branch_name, single_branch=True)
+    clone_dir = "./src/testingdir"
+    if Path(clone_dir).is_dir():
+        logging.info(f"Cloning directory {clone_dir} already exists, deleting...")
+        shutil.rmtree(clone_dir)
+        
+    repo = Repo.clone_from(repo_url, clone_dir, branch=branch_name, single_branch=True)
     return repo
   
 def handle_pull_request_event(payload):
@@ -203,6 +216,6 @@ def tests_and_compiles_on_push(payload, repo):
                                             )
                             )
 
-    os.system("rm -rf src/testingdir")
+    shutil.rm_tree("/src/testingdir")
         
     return test_results
