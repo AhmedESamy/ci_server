@@ -54,7 +54,7 @@ def handle_push_event(payload):
 
     #compile_project()
     therepo = clone_project_upon_push_and_test(payload)
-    test_results = run_tests_on_push(payload, therepo)
+    test_results = tests_and_compiles_on_push(payload, therepo)
     
     try:
         repo_name = payload['repository']['full_name']
@@ -204,7 +204,7 @@ def run_tests(dir):
 
 
 # Placeholder for running tests
-def run_tests_on_push(payload, repo):
+def tests_and_compiles_on_push(payload, repo):
     """Creates branch for each commit included in payload, runs compilation and testing for each. Returns
     array of testInfo objects containing the id and test results for each commit."""
     logging.info("Running tests... ")
