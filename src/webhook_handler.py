@@ -181,6 +181,26 @@ def check_syntax(dir):
 
     return pylint_pass,pylint_res
 
+def run_tests(dir): 
+    """
+    Runs test suite located in the given directory. Returns boolean 
+    pass status and string of pytest report.
+    """
+    stdout_capture = io.StringIO()
+    stderr_capture = io.StringIO()
+    with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+        retcode = pytest.main([dir])
+
+    pytest_output = stdout_capture.getvalue()
+    stderr_output = stderr_capture.getvalue()
+
+    if retcode == 0:
+        pytest_pass = True
+    else:
+        pytest_pass = False
+
+    return pytest_pass,"Standard output: "+ pytest_output + "\n" + "Standard error: " + stderr_output
+
 
 # Placeholder for running tests
 def run_tests_on_push(payload, repo):
@@ -195,14 +215,12 @@ def run_tests_on_push(payload, repo):
         logging.info(f"\nTesting Commit: {commit_id}")
 
         repo.git.checkout(commit_id)
-        stdout_output = io.StringIO()
-        stderr_output = io.StringIO()
+
+        logging.info(f"\nTesting Commit: {commit_id}")
+        pytest_pass,pytest_output = run_tests("src/testingdir/src/tests")        
         
-        with redirect_stdout(stdout_output), redirect_stderr(stderr_output):
-            pytest.main(["src/testingdir/src/tests"])
-        
-        results[commit_id] = "Standard output: "+stdout_output.getvalue()+"Standard error: "+stderr_output.getvalue()
-        
+        results[commit_id] = pytest_output
+
     os.system("rm -rf src/testingdir")
         
     return results
