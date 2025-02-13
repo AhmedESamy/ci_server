@@ -77,3 +77,6 @@ def test_clone_project_upon_push_and_test_dir_not_exists(mocker):
 
 def test_a_new_test(mocker):
     assert True
+    
+def test_a_new_test_two(mocker):
+    assert True
