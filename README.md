@@ -12,7 +12,7 @@ This project is a minimal **Continuous Integration (CI) Server** that listens to
 
 ## **Our Way Of Thinking** 
 
-During this project, the team progressed through stages to establish an effective way of working. Initially, principles and constraints were defined, focusing on task allocation and collaboration. A foundation was built by integrating key practices such as modular design, version control, and task tracking. This framework was then adopted by the team, becoming fully in place as all members consistently followed it. Over time, the workflow proved effective, enabling seamless integration, robust testing, and timely delivery. While this way of working is still active, it may evolve or be retired in future projects based on lessons learned
+Our team currently occupies the stages of Formed and Collaborating in the Essence framework. Responsibilities and tasks have been assigned and adhered to with some efficiency, and rapport has been built within the team. Communication issues still arise, and misunderstandings regarding the scope of responsibilities have caused some conflicts in terms of productivity. For future improvement, communication about responsibilities and deadlines should be further clarified and made accessible to the whole team.
 
 
 ## Features
