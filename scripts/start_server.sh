@@ -14,6 +14,6 @@ echo "Starting CI Server..."
 # export FLASK_ENV=production
 
 # TODO: Run the Flask application in the background
-# nohup python3 -m flask run --host=0.0.0.0 --port=5000 &
+# nohup python3 -m flask run --host=0.0.0.0 --port=8024 &
 
 echo "Placeholder: CI Server start script setup"
