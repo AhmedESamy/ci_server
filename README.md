@@ -74,6 +74,10 @@ bash scripts/start_server.sh
 ```
 This will start the Flask server and listen for webhook events.
 
+Alternatively you accomplish this by first building the docker image by running `docker compose build`
+
+Then you can start the server by running `docker compose up` 
+
 ## Running Tests
 To run the unit tests, execute:
 ```sh
@@ -85,7 +89,7 @@ This will validate the webhook handling, notification system, and CI logic.
 To enable webhook support, configure your GitHub repository:
 1. Go to **Repository Settings > Webhooks**.
 2. Click **Add Webhook**.
-3. Set **Payload URL** to: `http://<server-ip>:5000/webhook`
+3. Set **Payload URL** to: `http://<server-ip>:8024/webhook`
 4. Choose **application/json** as the Content Type.
 5. Select **push** and **pull_request** events.
 6. Click **Add Webhook**.
