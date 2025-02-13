@@ -27,4 +27,4 @@ def handle_webhook():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logging.info("Starting CI server...")
-    app.run(host="0.0.0.0", port=3200, debug=True)
+    app.run(host="0.0.0.0", port=8024, debug=True)

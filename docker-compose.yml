@@ -1,0 +1,13 @@
+services:
+  ci_server_service:
+    build: .
+    
+    container_name: ciserver
+
+    volumes:
+       - .:/server
+
+    ports:
+       - "8024:8024"
+
+    command: python3.9 src/ci_server.py
